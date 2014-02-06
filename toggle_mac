@@ -1,0 +1,66 @@
+#!/bin/bash
+DEFAULT_ETH_MAC="" #<-- your default eth0 mac address
+DEFAULT_WLAN_MAC="" #<-- your default wlan0 mac address
+OTHER_MAC="00:00:00:00:00:00" #<-- your new mac address
+
+INTERFACE=""
+
+if [ $UID != 0 ]
+then
+    echo "run with sudo!"
+    exit 1
+fi
+
+change_wlan_mac() {
+	service networking stop
+	CURRENT_MAC=`cat /sys/class/net/wlan0/address`
+	ifconfig wlan0 down
+	if [ "$CURRENT_MAC" = "$DEFAULT_WLAN_MAC" ]
+	then
+		ifconfig wlan0 hw ether $OTHER_MAC
+	else
+		ifconfig wlan0 hw ether $DEFAULT_WLAN_MAC
+	fi
+	ifconfig wlan0 up
+	service networking start
+}
+
+change_eth_mac() {
+        service networking stop
+	CURRENT_MAC=`cat /sys/class/net/eth0/address`
+        if [ "$CURRENT_MAC" = "$DEFAULT_ETH_MAC" ]
+        then
+                ifconfig eth0 hw ether $OTHER_MAC
+        else
+                ifconfig eth0 hw ether $DEFAULT_ETH_MAC
+        fi
+        service networking start
+}
+
+while getopts ":i:h" opt
+do
+        case $opt in
+                h)
+                        echo "Usage: tm [-h | help noargs] [-i | dev interface]"
+                        exit 0;;
+                i)
+                        if [ "$OPTARG" = "wlan0" ]
+                        then
+                                change_wlan_mac
+                                exit 0
+                        elif [ "$OPTARG" = "eth0" ]
+                        then
+                                change_eth_mac
+                                exit 0
+                        fi
+
+                        echo "errors processing the interface"
+                        exit 1;;
+                *)
+                        echo "one or more invalid arguments"
+                        exit 1;;
+        esac
+done
+
+echo "called with no arguments"
+exit 1
